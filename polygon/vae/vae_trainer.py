@@ -4,7 +4,7 @@ import logging
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_norm_
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, IterableDataset
 #from utils.moses_utils import OneHotVocab
 from polygon.utils.moses_utils import CircularBuffer
 from polygon.utils.moses_utils import set_torch_seed_to_all_gens
@@ -87,8 +87,11 @@ class VAETrainer(ABC):
         else:
             worker_init_fn = None
 
+        if isinstance(data, IterableDataset):
+            shuffle = False
+
         loader = DataLoader(data,
-                          batch_size=self.n_batch,
+                          batch_size=batch_size,
                           shuffle=shuffle,
                           num_workers=self.n_workers,
                           collate_fn=collate_fn,

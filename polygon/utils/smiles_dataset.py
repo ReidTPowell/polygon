@@ -1,26 +1,22 @@
 import os
-from torch.utils.data import Dataset
+from torch.utils.data import IterableDataset
 
-class SmilesDataset(Dataset):
-    """Dataset for reading SMILES strings lazily from a file."""
+class SmilesDataset(IterableDataset):
+    """Iterably read SMILES strings from a text file with minimal memory."""
 
     def __init__(self, path: str):
         self.path = path
         if not os.path.isfile(self.path):
             raise ValueError(f"File not found: {self.path}")
-        self.offsets = []
-        offset = 0
+        # count lines once to provide __len__ without storing offsets
         with open(self.path, "rb") as f:
+            self._length = sum(1 for _ in f)
+
+    def __iter__(self):
+        with open(self.path, "r", encoding="utf-8") as f:
             for line in f:
-                self.offsets.append(offset)
-                offset = f.tell()
+                yield line.rstrip("\n")
 
     def __len__(self):
-        return len(self.offsets)
-
-    def __getitem__(self, idx: int):
-        with open(self.path, "rb") as f:
-            f.seek(self.offsets[idx])
-            line = f.readline().decode("utf-8")
-        return line.rstrip("\n")
+        return self._length
 

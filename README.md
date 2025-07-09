@@ -71,8 +71,9 @@ polygon train \
         --device cpu
 ```
 
-The training command now streams SMILES directly from disk using a lazy dataset,
-which allows handling files that do not fit into RAM.
+The training command now streams SMILES directly from disk using a lazy
+`SmilesDataset`, which avoids loading the entire file into memory.  Random
+shuffling is disabled for this streaming mode to keep memory usage low.
 
 Train Ligand Binding Models for Two Protein Targets
 ```
