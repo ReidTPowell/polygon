@@ -67,9 +67,12 @@ polygon train \
 	--n_epoch 200 \
 	--n_batch 1024 \
 	--debug \
-	--d_dropout 0.2 \
-	--device cpu
+        --d_dropout 0.2 \
+        --device cpu
 ```
+
+The training command now streams SMILES directly from disk using a lazy dataset,
+which allows handling files that do not fit into RAM.
 
 Train Ligand Binding Models for Two Protein Targets
 ```

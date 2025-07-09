@@ -34,6 +34,7 @@ from polygon.utils.utils import str2bool
 from polygon.utils.utils import canonicalize_list
 from polygon.utils.train_ligand_binding_model import train_ligand_binding_model
 from polygon.version import __version__
+from polygon.utils.smiles_dataset import SmilesDataset
 
 ################################################################################
 # Command line parsing
@@ -586,16 +587,14 @@ def train_main(args):
     if device.type.startswith("cuda"):
         torch.cuda.set_device(device.index or 0)
 
-    # get training data
-    with open(args.train_data, "r") as handle:
-        logging.debug("Get training data.")
-        train_data = [line.rstrip() for line in handle.readlines()]
+    # get training data lazily to avoid loading the whole file into memory
+    logging.debug("Get training data.")
+    train_data = SmilesDataset(args.train_data)
 
     if args.validation_data:
-        # get validation data
+        # get validation data lazily
         logging.debug("Get validation data.")
-        with open(args.validation_data, "r") as handle:
-            validation_data = [line.rstrip() for line in handle.readlines()]
+        validation_data = SmilesDataset(args.validation_data)
     else:
         validation_data = None
 
