@@ -22,8 +22,8 @@ from rdkit.Chem import Descriptors
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors, Mol
-from rdkit.six import iteritems
-#from rdkit.six.moves import cPickle
+from six import iteritems
+
 import _pickle as cPickle
 from rdkit.Chem import Draw
 from rdkit.Chem.Draw import SimilarityMaps
