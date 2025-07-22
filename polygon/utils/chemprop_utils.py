@@ -1,4 +1,12 @@
 import numpy as np
+
+if not hasattr(np, "VisibleDeprecationWarning"):
+    np.VisibleDeprecationWarning = type(
+        "VisibleDeprecationWarning",
+        (Warning,),
+        {},
+    )
+
 import torch
 from pathlib import Path
 from typing import List, Optional
