@@ -453,29 +453,39 @@ def sample_parser(parser):
 
     return sub_parser 
 
-def train_ligand_binding_model_parser(parser):
-    """ Add subparser arguments for passing filter generation """
-    sub_parser = parser.add_parser("train_ligand_binding_model", help="Train a Random Forest Regressor Model for Target-Ligand Bindign Prediction")
+def train_reward_model_parser(parser):
+    """Add subparser arguments for training a Chemprop reward model."""
+    sub_parser = parser.add_parser(
+        "train_reward_model",
+        help="Train a Chemprop model on a two-column CSV with 'smiles' and 'affinity'.",
+    )
 
-    # required files
-    req_io_group = sub_parser.add_argument_group("Required I/O Arguments")
-    req_io_group.add_argument('--uniprot_id',
-        default=None,
+    req = sub_parser.add_argument_group("Required I/O Arguments")
+    req.add_argument(
+        "--training_csv",
         required=True,
-        help='Target Protein UniProt ID')
-    req_io_group.add_argument('--binding_db_path',
-        default=None,
-        required=True,
-        help='Path to the BindingDB data')
-
+        help="Path to training CSV (columns: smiles, affinity)",
+    )
 
     opt_runtime = sub_parser.add_argument_group("Optional Runtime Arguments")
-    opt_runtime.add_argument("--output_path",
-        default=None,
-        type=str,
-        help='Path to write pickled sklearn model to.')
+    opt_runtime.add_argument(
+        "--output_path",
+        required=True,
+        help="Where to save the trained Chemprop model",
+    )
+    opt_runtime.add_argument(
+        "--dataset_type",
+        choices=["regression", "classification"],
+        default="regression",
+        help="Type of prediction task",
+    )
+    opt_runtime.add_argument(
+        "--epochs",
+        type=int,
+        default=30,
+        help="Number of training epochs",
+    )
 
-    # Optional runtime behavior
     global_arguments(sub_parser)
     return sub_parser
 
@@ -568,7 +578,7 @@ def get_parser():
     score_parser(sub_parser)
     sample_parser(sub_parser)
     load_parser(sub_parser)
-    train_ligand_binding_model_parser(sub_parser)
+    train_reward_model_parser(sub_parser)
     return parser
 
 ################################################################################
@@ -804,12 +814,13 @@ def load_main(args):
     model = load_model(VAE, args.model_path, args.device)
     return model
 
-def train_ligand_binding_model_main(args):
-
-    train_ligand_binding_model( args.uniprot_id,
-                                args.binding_db_path,
-                                args.output_path
-                                )
+def train_reward_model_main(args):
+    train_ligand_binding_model(
+        training_csv=args.training_csv,
+        output_path=args.output_path,
+        dataset_type=args.dataset_type,
+        epochs=args.epochs,
+    )
 
 def main():
     """ Main
@@ -844,8 +855,8 @@ def main():
         sample_main(args)
     elif args.command == "load":
         r = load_main(args)
-    elif args.command == "train_ligand_binding_model":
-        r = train_ligand_binding_model_main(args)   
+    elif args.command == "train_reward_model":
+        r = train_reward_model_main(args)
     else:
         logging.error("Did not recognize command.")
 

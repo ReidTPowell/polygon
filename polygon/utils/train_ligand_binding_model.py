@@ -1,80 +1,46 @@
-import pickle
 import pandas as pd
-import numpy as np
-
-from rdkit import Chem
-from rdkit.Chem import AllChem
-
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import KFold
-
-from pathlib import Path
-
 import logging
+from pathlib import Path
+from sklearn.model_selection import train_test_split
 
-def train_ligand_binding_model(target_unit_pro_id,binding_db_path,output_path):
-    binddb = pd.read_csv(binding_db_path, sep="\t",header=0,low_memory=False,error_bad_lines=False)
+from .chemprop_utils import chemprop_train
 
 
-    d = binddb[binddb['UniProt (SwissProt) Primary ID of Target Chain']==target_unit_pro_id]
-    d = d[['Ligand SMILES','IC50 (nM)','Kd (nM)']]
-    d.columns = ['smiles','ic50','kd50']
+def train_ligand_binding_model(
+    training_csv: str,
+    output_path: str,
+    dataset_type: str = "regression",
+    epochs: int = 30,
+) -> Path:
+    """Train a Chemprop reward model.
 
-    logging.debug(f'Number of obs: {d.shape[0]}:')
-    logging.debug(f'{d.head()}')
+    ``training_csv`` must contain ``smiles`` and ``affinity`` columns.
+    The best model is saved to ``output_path``.
+    """
 
-    vs = []
-    for i,j in d[['ic50','kd50']].values:
-        try:
-            v = float(i)
-        except ValueError:
-            v = float(i[1:])
-        try:
-            w = float(j)
-        except ValueError:
-            w = float(j[1:])       
+    df = pd.read_csv(training_csv)
+    if "smiles" not in df.columns or "affinity" not in df.columns:
+        raise ValueError("CSV must contain 'smiles' and 'affinity' columns")
 
-        t = pd.Series([v,w]).dropna().min()
-        t = -np.log10(t*1E-9) 
-        vs.append(t)
-        
-    d['metric_value'] = vs
-    d = d[['smiles','metric_value']]
-    d['metric_value'] = d['metric_value'].astype(float)
-    d = d.drop_duplicates(subset='smiles')
-    d = d.dropna()
+    smiles = df["smiles"].tolist()
+    props = df["affinity"].tolist()
 
-    logging.debug(f'Number of obs: {d.shape[0]}:')
+    train_smi, val_smi, train_p, val_p = train_test_split(
+        smiles, props, test_size=0.1, random_state=0
+    )
 
-    if d.shape[0]<10:
-        logging.info('Less than 10 compound-target pairs. Not fitting a model')
-        return 1
-    # convert to fingerprint
-    fps = []
-    values = []
-    for x,y in d[['smiles','metric_value']].values:
-        try:
-            fp = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(x),2)
-        except:
-            continue
-        
-        fps.append(fp)
-        values.append(y)
+    model = chemprop_train(
+        dataset_type=dataset_type,
+        train_smiles=train_smi,
+        val_smiles=val_smi,
+        property_name="affinity",
+        train_properties=train_p,
+        val_properties=val_p,
+        epochs=epochs,
+        save_path=Path(output_path),
+        num_workers=0,
+        use_gpu=False,
+    )
 
-    X = np.array(fps)
-    y = np.array(values)
-
-    regr = RandomForestRegressor(n_estimators=1000,random_state=0,n_jobs=-1)
-    regr.fit(X,y)
-    regr.score(X,y)
-
-    logging.debug(regr.score(X,y))
-
-    if output_path is None:
-        output_path = f'{target_unit_pro_id}_rfr_ligand_model.pt'
-
-    with open(output_path, 'wb') as handle:
-        s = pickle.dump(regr, handle)
-
-    return 1
+    logging.info("Model saved to %s", output_path)
+    return Path(output_path)
