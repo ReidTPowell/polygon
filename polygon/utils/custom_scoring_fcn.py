@@ -4,6 +4,7 @@ import pandas as pd
 import math
 import gzip
 import pickle
+from pathlib import Path
 
 #import xgboost as xgb
 import joblib as skjoblib
@@ -33,21 +34,40 @@ import torch
 
 
 class LigandEfficancy(MoleculewiseScoringFunction):
-    """
-    """
-    def __init__(self, score_modifier, model_path):
+    """Predict ligand efficiency using either a random forest or Chemprop model."""
+
+    def __init__(self, score_modifier, model_path, model="chemprop"):
         super().__init__(score_modifier=score_modifier)
-        with open(model_path,'rb') as handle:
-            self.rfr = pickle.load(handle)
+
+        self.model_type = model.lower()
+        self.model_path = model_path
+
+        if self.model_type == "chemprop":
+            # Lazy import to avoid heavy dependency when not needed
+            from .chemprop_utils import chemprop_load, chemprop_load_scaler
+
+            self.cp_model = chemprop_load(Path(model_path))
+            self.cp_scaler = chemprop_load_scaler(Path(model_path))
+        else:
+            with open(model_path, "rb") as handle:
+                self.rfr = pickle.load(handle)
         
     def raw_score(self, smiles: str) -> float:
         # determine score from self.model and the given smiles string
         m = Chem.MolFromSmiles(smiles)
         mph = Chem.AddHs(m)
         N = mph.GetNumHeavyAtoms()
-        fp = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smiles),2)
-        fp = np.array([fp])
-        pic50 = self.rfr.predict(fp)
+
+        if self.model_type == "chemprop":
+            from .chemprop_utils import chemprop_predict
+
+            pic50 = chemprop_predict(self.cp_model, [smiles])[0]
+            if self.cp_scaler is not None:
+                pic50 = self.cp_scaler.inverse_transform([[pic50]])[0][0]
+        else:
+            fp = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smiles), 2)
+            fp = np.array([fp])
+            pic50 = self.rfr.predict(fp)
         try:
             LE = 1.4*(pic50)/N
         except:
@@ -480,3 +500,22 @@ class MW(MoleculewiseScoringFunction):
         except:
             #print('we cant calculate molecular weight', smiles )
             return -1.
+
+
+class BBBScore(MoleculewiseScoringFunction):
+    """Predict blood-brain barrier penetration using ADMET-AI."""
+
+    def __init__(self, score_modifier):
+        super().__init__(score_modifier=score_modifier)
+        try:
+            from admet_ai import ADMETModel
+        except ImportError as e:
+            raise ImportError(
+                "admet_ai is required for BBBScore. Install via `pip install admet-ai`."
+            ) from e
+        self.model = ADMETModel()
+        self.prop = "BBB_Martins"
+
+    def raw_score(self, smiles: str) -> float:
+        preds = self.model.predict(smiles)
+        return preds.get(self.prop, 0.0)

@@ -133,6 +133,10 @@ polygon train_reward_model \
 
 Set `--dataset_type` to `classification` for classification tasks.
 
+Ligand efficiency scoring can load either a pickled random forest model or a
+trained Chemprop model.  The default backend is now Chemprop; specify
+`model: randomforest` in your scoring definition if you prefer the RF model.
+
 ## YAML Scoring Definitions
 
 Scoring definitions used during molecule generation can now be provided as YAML in addition to CSV.  A YAML file should contain a list under the key `scoring` with the same fields as the original CSV, for example:
@@ -149,7 +153,19 @@ scoring:
     minimize: false
     mu: 0.8
     sigma: 0.3
-    file: ../data/RFR_ligand_binding_model_MTOR.pkl
+    file: ../data/chemprop_model_MTOR.pth
+  - category: sa
+    name: sa
+    minimize: true
+    mu: 3.0
+    sigma: 1.0
+  - category: bbb
+    name: bbb
+    minimize: false
+    mu: 0.5
+    sigma: 0.1
 ```
 
 Use the YAML file by passing it to `--scoring_definition` when running `polygon generate`.
+
+Additional categories include `sa` for synthetic accessibility and `bbb` for blood-brain barrier predictions using ADMET-AI.
