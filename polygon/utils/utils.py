@@ -247,7 +247,13 @@ def build_scoring_function( scoring_definition,
 
     # scoring definition has columns:
     # category, name, minimize, mu, sigma, file, model, n_top
-    df = pd.read_csv(scoring_definition, sep=",",header=0)
+    if scoring_definition.lower().endswith((".yml", ".yaml")):
+        import yaml
+        with open(scoring_definition) as handle:
+            doc = yaml.safe_load(handle)
+        df = pd.DataFrame(doc["scoring"])
+    else:
+        df = pd.read_csv(scoring_definition, sep=",", header=0)
     scorers = {}
 
 

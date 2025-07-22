@@ -118,3 +118,38 @@ N[SH](=O)(O)c1cccc(S(=O)(=O)O)c1
 N#Cc1cc(C(N)=NO)ccc1Nc1nccc2ccnn12
 CN(CN=C(O)c1ccco1)Nc1nccs1
 ```
+
+## Training Reward Models with Chemprop
+
+POLYGON now supports training reward function models using [Chemprop](https://github.com/chemprop/chemprop).  Provide a two-column CSV file containing `smiles` and `affinity` headers and run:
+
+```
+polygon train_reward_model \
+   --training_csv my_data.csv \
+   --dataset_type regression \
+   --epochs 30 \
+   --output_path chemprop_model.pt
+```
+
+Set `--dataset_type` to `classification` for classification tasks.
+
+## YAML Scoring Definitions
+
+Scoring definitions used during molecule generation can now be provided as YAML in addition to CSV.  A YAML file should contain a list under the key `scoring` with the same fields as the original CSV, for example:
+
+```yaml
+scoring:
+  - category: qed
+    name: qed
+    minimize: false
+    mu: 0.67
+    sigma: 0.1
+  - category: ligand_efficiency
+    name: MTOR_le
+    minimize: false
+    mu: 0.8
+    sigma: 0.3
+    file: ../data/RFR_ligand_binding_model_MTOR.pkl
+```
+
+Use the YAML file by passing it to `--scoring_definition` when running `polygon generate`.
