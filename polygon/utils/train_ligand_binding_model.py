@@ -39,7 +39,7 @@ def train_ligand_binding_model(
         epochs=epochs,
         save_path=Path(output_path),
         num_workers=0,
-        use_gpu=False,
+        use_gpu=True,
     )
 
     logging.info("Model saved to %s", output_path)

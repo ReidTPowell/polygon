@@ -54,7 +54,7 @@ def chemprop_train(
     epochs: int,
     save_path: Path,
     num_workers: int = 0,
-    use_gpu: bool = False,
+    use_gpu: bool = True,
 ) -> MoleculeModel:
     """Train a Chemprop model and save the best model to ``save_path``."""
 
@@ -71,6 +71,7 @@ def chemprop_train(
     ] + ([] if use_gpu else ["--no_cuda"])
 
     args = TrainArgs().parse_args(arg_list)
+    args.device = torch.device("cuda:0" if use_gpu and torch.cuda.is_available() else "cpu")
     args.task_names = [property_name]
     args.train_data_size = len(train_smiles)
 
@@ -120,7 +121,12 @@ def chemprop_train(
     return model
 
 
-def chemprop_load(model_path: Path, device: Optional[torch.device] = torch.device("cpu")) -> MoleculeModel:
+def chemprop_load(
+    model_path: Path,
+    device: Optional[torch.device] = torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu"
+    ),
+) -> MoleculeModel:
     """Load a saved Chemprop model."""
     return load_checkpoint(path=str(model_path), device=device).eval()
 

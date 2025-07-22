@@ -43,12 +43,13 @@ cd polygon
 pip install .
 ```
 
-optionally install cudatoolkit for gpu acceleration in pytorch
-for example:
+POLYGON uses GPU acceleration by default for Chemprop models. Install the
+CUDA-enabled versions of PyTorch and Chemprop. For example:
 ```
 conda install cudatoolkit=11.1 -c conda-forge
+pip install chemprop[gpu]
 ```
-or see https://pytorch.org/ for specific installation instructions.
+See <https://pytorch.org/> for platform specific installation instructions.
 
 Installation time is on the order of minutes.
 
@@ -121,7 +122,7 @@ CN(CN=C(O)c1ccco1)Nc1nccs1
 
 ## Training Reward Models with Chemprop
 
-POLYGON now supports training reward function models using [Chemprop](https://github.com/chemprop/chemprop).  Provide a two-column CSV file containing `smiles` and `affinity` headers and run:
+POLYGON now supports training reward function models using [Chemprop](https://github.com/chemprop/chemprop).  GPU device 0 will be used automatically when available. Provide a two-column CSV file containing `smiles` and `affinity` headers and run:
 
 ```
 polygon train_reward_model \
