@@ -82,7 +82,7 @@ def chemprop_train(
     train_loader = chemprop_build_data_loader(train_smiles, train_properties, shuffle=True, num_workers=num_workers)
     val_loader = chemprop_build_data_loader(val_smiles, val_properties, shuffle=False, num_workers=num_workers)
 
-    model = MoleculeModel(args)
+    model = MoleculeModel(args).to(args.device)
     loss_func = get_loss_func(args)
     optimizer = build_optimizer(model, args)
     scheduler = build_lr_scheduler(optimizer, args)
