@@ -40,7 +40,19 @@ def chemprop_build_data_loader(
 def chemprop_predict(model: MoleculeModel, smiles: List[str], num_workers: int = 0) -> np.ndarray:
     """Predict properties using a Chemprop model."""
     loader = chemprop_build_data_loader(smiles, num_workers=num_workers)
-    preds = np.array(model(loader))[:, 0]
+
+    all_preds = []
+    device = next(model.parameters()).device
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            batch = batch.to(device)
+            batch_preds = model(batch)
+            if isinstance(batch_preds, (list, tuple)):
+                batch_preds = batch_preds[0]
+            all_preds.append(batch_preds.detach().cpu().numpy())
+
+    preds = np.concatenate(all_preds, axis=0)[:, 0]
     return preds
 
 
