@@ -34,40 +34,30 @@ import torch
 
 
 class LigandEfficancy(MoleculewiseScoringFunction):
-    """Predict ligand efficiency using either a random forest or Chemprop model."""
+    """Predict ligand efficiency using a Chemprop model."""
 
-    def __init__(self, score_modifier, model_path, model="chemprop"):
+    def __init__(self, score_modifier, model_path):
         super().__init__(score_modifier=score_modifier)
 
-        self.model_type = model.lower()
         self.model_path = model_path
 
-        if self.model_type == "chemprop":
-            # Lazy import to avoid heavy dependency when not needed
-            from .chemprop_utils import chemprop_load, chemprop_load_scaler
+        # Lazy import to avoid heavy dependency when not needed
+        from .chemprop_utils import chemprop_load, chemprop_load_scaler
 
-            self.cp_model = chemprop_load(Path(model_path))
-            self.cp_scaler = chemprop_load_scaler(Path(model_path))
-        else:
-            with open(model_path, "rb") as handle:
-                self.rfr = pickle.load(handle)
+        self.cp_model = chemprop_load(Path(model_path))
+        self.cp_scaler = chemprop_load_scaler(Path(model_path))
         
     def raw_score(self, smiles: str) -> float:
-        # determine score from self.model and the given smiles string
+        """Return ligand efficiency predicted by the Chemprop model."""
         m = Chem.MolFromSmiles(smiles)
         mph = Chem.AddHs(m)
         N = mph.GetNumHeavyAtoms()
 
-        if self.model_type == "chemprop":
-            from .chemprop_utils import chemprop_predict
+        from .chemprop_utils import chemprop_predict
 
-            pic50 = chemprop_predict(self.cp_model, [smiles])[0]
-            if self.cp_scaler is not None:
-                pic50 = self.cp_scaler.inverse_transform([[pic50]])[0][0]
-        else:
-            fp = AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smiles), 2)
-            fp = np.array([fp])
-            pic50 = self.rfr.predict(fp)
+        pic50 = chemprop_predict(self.cp_model, [smiles])[0]
+        if self.cp_scaler is not None:
+            pic50 = self.cp_scaler.inverse_transform([[pic50]])[0][0]
         try:
             LE = 1.4*(pic50)/N
         except:

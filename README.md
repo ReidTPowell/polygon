@@ -27,6 +27,9 @@ Installation of POLYGON with pip will automatically install the necessary depend
 * torch>=1.4.0
 * joblib>=0.14.1
 * scikit-learn>=0.22.1
+* chemprop>=1.5.0
+* admet_ai
+* pyyaml
 
 ```
 conda install -c conda-force rdkit
@@ -170,3 +173,55 @@ scoring:
 Use the YAML file by passing it to `--scoring_definition` when running `polygon generate`.
 
 Additional categories include `sa` for synthetic accessibility and `bbb` for blood-brain barrier predictions using ADMET-AI.
+
+## Example: High Affinity with Low BBB Penetration
+
+The snippet below illustrates a typical workflow to train a target affinity model, set up a YAML scoring definition and finally generate molecules predicted to bind strongly while remaining outside the blood-brain barrier.
+
+1. **Train a Chemprop affinity model**
+
+   Prepare a CSV named `mtor_train.csv` with columns `smiles` and `affinity` then run:
+
+   ```bash
+   polygon train_reward_model \
+       --training_csv mtor_train.csv \
+       --dataset_type regression \
+       --epochs 30 \
+       --output_path mtor_cp.pt
+   ```
+
+2. **Create a scoring definition**
+
+   ``scoring.yaml`` might look like:
+
+   ```yaml
+   scoring:
+     - category: qed
+       name: qed
+       minimize: false
+       mu: 0.67
+       sigma: 0.1
+     - category: ligand_efficiency
+       name: MTOR_le
+       minimize: false
+       mu: 0.8
+       sigma: 0.3
+       file: mtor_cp.pt
+     - category: bbb
+       name: bbb
+       minimize: true
+       mu: 0.5
+       sigma: 0.1
+   ```
+
+3. **Run molecule generation**
+
+   ```bash
+   polygon generate \
+       --model_path pretrained_vae_model.pt \
+       --scoring_definition scoring.yaml \
+       --mols_to_sample 8192 \
+       --outF high_affinity_low_bbb
+   ```
+
+The resulting SMILES in `high_affinity_low_bbb.txt` are prioritized for MTOR affinity while penalizing BBB penetration.

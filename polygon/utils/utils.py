@@ -324,13 +324,11 @@ def build_scoring_function( scoring_definition,
                                                                             minimize=row.minimize),
                                     )  
         elif row.category == 'ligand_efficiency':
-            model_type = getattr(row, 'model', 'chemprop')
             scorers[name] = LigandEfficancy(
                                     score_modifier=MinMaxGaussianModifier( mu=row.mu,
                                                                             sigma=row.sigma,
                                                                             minimize=row.minimize),
                                     model_path=row.file,
-                                    model=model_type
                                     )
         else:
             print("WTF Did not understand category: {}".format(row.category))
