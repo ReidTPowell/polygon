@@ -8,10 +8,15 @@ if not hasattr(np, "VisibleDeprecationWarning"):
     )
 
 import torch
+from torch.utils.data import DataLoader
 from pathlib import Path
 from typing import List, Optional
 from chemprop.args import TrainArgs
-from chemprop.data import MoleculeDataLoader, MoleculeDatapoint, MoleculeDataset
+from chemprop.data import (
+    MoleculeDatapoint,
+    MoleculeDataset,
+    build_dataloader,
+)
 from chemprop.train import get_loss_func, train as _chemprop_train
 from chemprop.models import MoleculeModel
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, save_checkpoint, load_scalers
@@ -24,8 +29,8 @@ def chemprop_build_data_loader(
     properties: Optional[List[float]] = None,
     shuffle: bool = False,
     num_workers: int = 0,
-) -> MoleculeDataLoader:
-    """Build a MoleculeDataLoader for Chemprop."""
+) -> DataLoader:
+    """Build a ``DataLoader`` compatible with Chemprop."""
     if properties is None:
         properties = [None] * len(smiles)
     else:
@@ -34,7 +39,7 @@ def chemprop_build_data_loader(
     dataset = MoleculeDataset(
         [MoleculeDatapoint(smiles=[s], targets=prop) for s, prop in zip(smiles, properties)]
     )
-    return MoleculeDataLoader(dataset=dataset, shuffle=shuffle, num_workers=num_workers)
+    return build_dataloader(dataset=dataset, batch_size=len(dataset), shuffle=shuffle, num_workers=num_workers)
 
 
 def chemprop_predict(model: MoleculeModel, smiles: List[str], num_workers: int = 0) -> np.ndarray:
