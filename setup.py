@@ -42,7 +42,15 @@ setup(
 	},
 	keywords='',
 	packages=find_packages(),
-        install_requires=['pandas>=1.0.3','numpy>=1.18.1','rdkit>=2019.09.3','torch>=1.4.0','joblib>=0.14.1','scikit-learn>=0.22.1','chemprop>=1.5.0'],
+        install_requires=['pandas>=1.0.3',
+                          'numpy>=1.18.1',
+                          'rdkit>=2019.09.3',
+                          'torch>=1.4.0',
+                          'joblib>=0.14.1',
+                          'scikit-learn>=0.22.1',
+                          'chemprop>=1.5.0',
+                          'admet_ai',
+                          'pyyaml'],
         include_package_data=True,
 )
 
