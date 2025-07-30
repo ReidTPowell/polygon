@@ -12,11 +12,36 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 from typing import List, Optional
 from chemprop.args import TrainArgs
-from chemprop.data import (
-    MoleculeDatapoint,
-    MoleculeDataset,
-    build_dataloader,
-)
+from chemprop.data import MoleculeDatapoint, MoleculeDataset
+
+# Chemprop versions prior to 2.0 expose a ``MoleculeDataLoader`` class while
+# newer versions export ``build_dataloader``.  Import whichever is available and
+# provide a unified ``_build_dataloader`` function.
+try:  # Chemprop >=2.0
+    from chemprop.data import build_dataloader as _build_dataloader
+except Exception:  # pragma: no cover - older Chemprop versions
+    try:  # Chemprop <2.0
+        from chemprop.data import MoleculeDataLoader as _ChempropDataLoader
+
+        def _build_dataloader(
+            dataset: MoleculeDataset,
+            batch_size: int = 64,
+            shuffle: bool = False,
+            num_workers: int = 0,
+        ) -> DataLoader:
+            """Fallback DataLoader builder for older Chemprop releases."""
+
+            return _ChempropDataLoader(
+                dataset=dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+            )
+
+    except Exception as exc:  # pragma: no cover - should not happen
+        raise ImportError(
+            "Could not import a Chemprop DataLoader."
+        ) from exc
 from chemprop.train import get_loss_func, train as _chemprop_train
 from chemprop.models import MoleculeModel
 from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, save_checkpoint, load_scalers
@@ -39,7 +64,12 @@ def chemprop_build_data_loader(
     dataset = MoleculeDataset(
         [MoleculeDatapoint(smiles=[s], targets=prop) for s, prop in zip(smiles, properties)]
     )
-    return build_dataloader(dataset=dataset, batch_size=len(dataset), shuffle=shuffle, num_workers=num_workers)
+    return _build_dataloader(
+        dataset=dataset,
+        batch_size=len(dataset),
+        shuffle=shuffle,
+        num_workers=num_workers,
+    )
 
 
 def chemprop_predict(model: MoleculeModel, smiles: List[str], num_workers: int = 0) -> np.ndarray:
@@ -96,8 +126,18 @@ def chemprop_train(
     if not use_gpu:
         torch.use_deterministic_algorithms(True)
 
-    train_loader = chemprop_build_data_loader(train_smiles, train_properties, shuffle=True, num_workers=num_workers)
-    val_loader = chemprop_build_data_loader(val_smiles, val_properties, shuffle=False, num_workers=num_workers)
+    train_loader = chemprop_build_data_loader(
+        train_smiles,
+        train_properties,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+    chemprop_build_data_loader(
+        val_smiles,
+        val_properties,
+        shuffle=False,
+        num_workers=num_workers,
+    )
 
     model = MoleculeModel(args).to(args.device)
     loss_func = get_loss_func(args)
