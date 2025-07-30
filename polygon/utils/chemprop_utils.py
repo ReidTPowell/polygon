@@ -72,6 +72,25 @@ def chemprop_build_data_loader(
     )
 
 
+def _to_device(batch, device):
+    """Move a Chemprop TrainingBatch to the specified device."""
+    if hasattr(batch, "to"):
+        return batch.to(device)
+
+    try:
+        bmg, V_d, X_d, *rest = batch
+    except Exception:
+        raise AttributeError(
+            "Unexpected batch type returned by Chemprop dataloader"
+        )
+
+    bmg = bmg.to(device)
+    V_d = V_d.to(device) if V_d is not None else None
+    X_d = X_d.to(device) if X_d is not None else None
+    moved_rest = [x.to(device) if x is not None else None for x in rest]
+    return (bmg, V_d, X_d, *moved_rest)
+
+
 def chemprop_predict(model: MoleculeModel, smiles: List[str], num_workers: int = 0) -> np.ndarray:
     """Predict properties using a Chemprop model."""
     loader = chemprop_build_data_loader(smiles, num_workers=num_workers)
@@ -81,8 +100,12 @@ def chemprop_predict(model: MoleculeModel, smiles: List[str], num_workers: int =
     model.eval()
     with torch.no_grad():
         for batch in loader:
-            batch = batch.to(device)
-            batch_preds = model(batch)
+            batch = _to_device(batch, device)
+            if isinstance(batch, (list, tuple)):
+                bmg, V_d, X_d, *_ = batch
+                batch_preds = model(bmg, V_d, X_d)
+            else:
+                batch_preds = model(batch)
             if isinstance(batch_preds, (list, tuple)):
                 batch_preds = batch_preds[0]
             all_preds.append(batch_preds.detach().cpu().numpy())
